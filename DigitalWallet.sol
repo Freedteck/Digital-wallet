@@ -1,33 +1,68 @@
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8;
+// SPDX-License-Identifier: GPL-3.0
+
+pragma solidity >=0.8.2 <0.9.0;
 
 contract DigitalWallet {
-    string public owner;
-    string public receiver;
-    uint256 public receiverBalance = 0;
-    uint256 public balance;
-    uint256 private ownerBalance = 0;
+
+    // State variables
+    address private owner;
+    
+    // Struct to store transaction details
+    struct History {
+        address sender;
+        uint256 amount;
+        uint256 time;
+        string tx_type;
+    }
+    
+    // Array to store all transaction histories
+    History[] public allTransactions;
 
     constructor() {
-        owner = "Mubarak Freed";
-        balance = 1000000000;
-        receiver = "Somebody";
+        owner = msg.sender;
     }
 
-    function sendMoney(uint256 amount) public {
-        balance -= amount;
-        receiverBalance += amount;
+    // Function to send money
+    function send_money(address to, uint256 amount) public {
+        require(msg.sender == owner, "You are not the wallet owner");
+        uint256 balance = address(this).balance;
+        require(amount <= balance, "Insufficient amount");
+        payable(to).transfer(amount);
+        logTransaction(msg.sender, amount, "Transfer");
     }
 
-    function receiveMoney(uint256 amount) public {
-        receiverBalance -= amount;
-        balance +=amount;
+    // Function to receive money
+    function receive_money() public payable {
+        require(msg.value > 0);
+        logTransaction(msg.sender, msg.value, "Receive");
     }
 
-    function withdraw() public returns (uint256) {
-        ownerBalance = balance + receiverBalance;
-        receiverBalance = 0;
-        ownerBalance = 0;
-        return ownerBalance;
+    // Function to withdraw money
+    function withdraw(uint256 amount) public {
+        require(msg.sender == owner, "You are not the wallet owner");
+        uint256 balance = address(this).balance;
+        require(amount <= balance, "Insufficient amount");
+        payable(owner).transfer(amount);
+        logTransaction(msg.sender, amount, "Withdraw");
+    }
+
+    // Function to get the balance of the contract
+    function getBalance() public view returns (uint256) {
+        return address(this).balance;
+    }
+
+    function logTransaction(address sender, uint256 amount, string memory tx_type) private {
+        History memory newHistory = History({
+            sender: sender,
+            amount: amount,
+            time: block.timestamp,
+            tx_type: tx_type
+        });
+        allTransactions.push(newHistory);
+    }
+
+    // Function to get all transaction history
+    function getTxHistory() public view returns (History[] memory) {
+        return allTransactions;
     }
 }
